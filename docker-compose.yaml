@@ -1,0 +1,257 @@
+#----------------------------------------------------------------------------------
+#
+# this file contains extra services and overrides used only in development
+#
+#----------------------------------------------------------------------------------
+version: "3.8"
+
+networks: 
+  net_frontend:
+    name: net_frontend
+    driver: bridge
+  net_backend:
+    name: net_backend
+    driver: bridge
+
+volumes:
+  vol_auth_data:
+  vol_auth_config:
+  vol_portainer: 
+
+services:
+#==================================================================================
+# reverse proxy
+#==================================================================================
+
+#----------------------------------------------------------------------------------
+# traefik local deployment configuration
+#----------------------------------------------------------------------------------
+  traefik:
+    image: traefik:v2.3
+    restart: unless-stopped
+    networks:
+      net_frontend:
+        aliases:
+          - traefik.${DOMAIN}
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dev:/etc/traefik/dynamic
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`traefik.$DOMAIN`)"
+        - "traefik.http.routers.traefik.entrypoints=web"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        # enable ping check
+        - "traefik.http.routers.ping.rule=Host(`traefik.$DOMAIN`) && Path(`/ping`)"
+        - "traefik.http.routers.ping.service=ping@internal"    
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 30
+    command:
+      # static configurations -------------------------------------------------
+      # logging
+      - "--log.level=DEBUG"
+      # - "--log.filepath=/etc/traefik/log/traefik.log" # default is stdout.
+
+      # exposes traefik api : /api 
+      - "--api.insecure=true"  # traefik api will be available directly on the endpoint named traefik or 8080
+      - "--api.dashboard=true"
+      - "--api.debug=true" # enable endpoints for debugging: https://doc.traefik.io/traefik/operations/api/#endpoints 
+      - "--ping"
+
+      # entrypoints
+      - "--entryPoints.web.address=:80"
+      # - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.websecure.address=:443"
+
+      - "--entryPoints.email.address=:25"
+      - "--entryPoints.emailsecure.address=:587"
+
+      # providers
+      - "--providers.docker"
+      - "--providers.docker.network=traefik"
+      - "--providers.docker.exposedByDefault=false" # SECURITY: force declare containers with a label: traefik.enable=true
+
+      - "--providers.file"
+      - "--providers.file.filename=/etc/traefik/dynamic/config.yaml"
+    
+#==================================================================================
+# container management service
+#==================================================================================
+
+#----------------------------------------------------------------------------------
+# container management sidecar
+#----------------------------------------------------------------------------------
+  agent:
+    image: portainer/agent
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.agent
+      AGENT_PORT: 9001
+      LOG_LEVEL: debug
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      net_backend:
+        aliases:
+          - tasks.agent
+        
+#----------------------------------------------------------------------------------
+# container management web interface
+#----------------------------------------------------------------------------------
+# Notes:
+#   set default passworkd https://gist.github.com/deviantony/62c009b41bde5e078b1a7de9f11f5e55
+#   docker run --rm httpd:2.4-alpine htpasswd -nbB admin 'lusoadmin' | cut -d ":" -f 2
+#   escape all $ characters with $$
+#   look here: https://github.com/druidfi/stonehenge/blob/2.x/docker-compose.yml
+#   command: --admin-username "admin" --admin-password "$$2y$$05$$dxmqV2oF3HNHkQYwFldjUuuos6MHgYjJ8fEU8pBK9G9MSIf2hckRm" -H tcp://tasks.agent:9001 --tlsskipverify 
+#----------------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce
+    command: -H tcp://tasks.agent:9001 --tlsskipverify --admin-password-file /config/dev_admin_pass
+    volumes: 
+      - vol_portainer:/data
+      - ./portainer:/config
+    networks:
+      net_frontend:
+        aliases:
+          - portainer.${DOMAIN}
+      net_backend:
+    ports:
+      - 9000:9000
+      - 8000:8000
+    restart: unless-stopped
+    labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=net_frontend"  # required when container connects to more than one network
+        - "traefik.http.routers.portainer.entrypoints=web"
+        - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
+        - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    depends_on:
+      - agent
+
+#==================================================================================
+# Authentication and authorization services
+#==================================================================================
+
+  postgresAuthDB:
+    image: postgres:11.9-alpine
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - net_backend
+    restart: unless-stopped
+    volumes:
+      - vol_auth_data:/var/lib/postgresql/data
+
+  fusionauth:
+    # TODO: https://fusionauth.io/docs/v1/tech/installation-guide/docker/#kickstart
+    image: danielpporto/fusionauth-app:1.22.2
+    build:
+        context: ./fusionauth
+        dockerfile: Dockerfile
+    depends_on:
+      - postgresAuthDB
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgresAuthDB:5432/fusionauth
+      DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
+      DATABASE_ROOT_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      FUSIONAUTH_APP_MEMORY: ${FUSIONAUTH_APP_MEMORY}
+      FUSIONAUTH_APP_RUNTIME_MODE: development
+      FUSIONAUTH_APP_URL: http://fusionauth.local.dev:9011
+      # FUSIONAUTH_APP_KICKSTART_FILE: kickstart.json
+      SEARCH_TYPE: database
+    labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=net_frontend"  # required when container connects to more than one network
+        - "traefik.http.routers.fusionauth.entrypoints=web"
+        - "traefik.http.routers.fusionauth.rule=Host(`fusionauth.${DOMAIN}`)"
+        - "traefik.http.routers.fusionauth.service=fusionauth"
+        - "traefik.http.services.fusionauth.loadbalancer.server.port=9011"
+        - "traefik.web.backend.healthcheck.path=/"
+        - "traefik.web.backend.healthcheck.interval=10s"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9011/api/status || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+     net_frontend:
+      aliases:
+        - auth.${DOMAIN}
+     net_backend:
+    restart: unless-stopped
+    ports:
+      - 9011:9011
+    volumes:
+      - vol_auth_config:/usr/local/fusionauth/config
+      # - ./kickstart:/usr/local/fusionauth/kickstart
+
+#==================================================================================
+# Dns for development/testing
+#==================================================================================
+# Coredns helps nodes that is out of the docker stack or swarm to access frontend  
+# services it redirects all *.local.dev queries to 127.0.0.1 to be handle by traefik
+# That requires four things:
+# 1 - all frontend services must have a network alias with the FQDN defined and must be 
+#     used instead of the service name (to keep internal configuration consistent) 
+# 2 - all fronted services must have a reverse proxy configuration defined for the FQDN
+# 3 - a domain file that reply to the public ip of the reverse proxy. (Look at Corefile 
+#     and local.dev.domain files)
+# 4 - all nodes that want to access services exposed via domain must configure the 
+#     coredns as nameserver 
+# Note: Coredns is not used  internally by any container to resolve names. That's done
+# internally by docker and network alias. The purpose of this services is to help external 
+# clients to use it as dns to the reverse proxy.
+
+  coredns:
+    image: coredns/coredns:1.8.0
+    networks:
+      - net_frontend
+    ports:
+      - 53:53
+      - 53:53/udp 
+    volumes:
+      - ./coredns/dev/Corefile:/etc/coredns/Corefile
+      - ./coredns/dev/local.dev.domain:/etc/coredns/local.dev.domain
+      - ./coredns/dev/localhost.domain:/etc/coredns/localhost.domain
+    command: -conf /etc/coredns/Corefile
+
+#==================================================================================
+# Fake email for development
+#==================================================================================
+# https://github.com/mailhog/MailHog
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    networks:
+      net_frontend:
+        aliases:
+          - mail.${DOMAIN}
+    ports: 
+       - 1025:1025 # smtp server
+       - 8025:8025 # web ui
+    labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=net_frontend"  # required when container connects to more than one network
+        - "traefik.http.routers.mailhog.entrypoints=web"
+        - "traefik.http.routers.mailhog.rule=Host(`mail.${DOMAIN}`)"
+        - "traefik.http.routers.mailhog.service=mailhog"       
+        - "traefik.http.services.mailhog.loadbalancer.server.port=8025"
+
+        - "traefik.http.routers.smtp.entrypoints=email"
+        - "traefik.http.routers.smtp.rule=Host(`smtp.${DOMAIN}`)"
+        - "traefik.http.routers.smtp.service=smtp"       
+        - "traefik.http.services.smtp.loadbalancer.server.port=1025"
+
