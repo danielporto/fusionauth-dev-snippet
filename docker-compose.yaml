@@ -64,6 +64,7 @@ services:
     
 #==================================================================================
 # Authentication and authorization services
+# https://devops.datenkollektiv.de/using-a-postgresql-with-docker-like-a-pro.html
 #==================================================================================
 
   postgres:
@@ -85,9 +86,11 @@ services:
       timeout: 5s
       retries: 5
 
+  # more info: 
+  # https://fusionauth.io/docs/v1/tech/installation-guide/kickstart/
+  # https://fusionauth.io/docs/v1/tech/installation-guide/docker/#kickstart
+  # https://github.com/FusionAuth/fusionauth-example-kickstart
   fusionauth:
-    # TODO: https://fusionauth.io/docs/v1/tech/installation-guide/docker/#kickstart
-    # https://github.com/FusionAuth/fusionauth-example-kickstart
     image: danielporto/fusionauth-app:${FUSIONAUTH_VERSION}
     build:
         context: ./fusionauth
