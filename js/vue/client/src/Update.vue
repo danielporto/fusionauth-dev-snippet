@@ -18,7 +18,7 @@ export default {
   },
   methods: {
     update: function() {
-      fetch(`http://localhost:9000/set-user-data`, {
+      fetch(`http://js_server.localdev.vcap.me:9000/set-user-data`, {
         credentials: "include",
         method: "POST",
         headers: {

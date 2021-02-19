@@ -8,7 +8,7 @@ const config = {
     "Content-Type": "application/x-www-form-urlencoded",
   },
 };
-const url = `http://localhost:${process.env.FUSIONAUTH_PORT}/oauth2/token`;
+const url = `http://fusionauth.${process.env.DOMAIN_NAME}:${process.env.FUSIONAUTH_PORT}/oauth2/token`;
 
 router.get("/", (req, res) => {
     // State from Server
@@ -37,7 +37,7 @@ router.get("/", (req, res) => {
       // save token to session
       req.session.token = result.data.access_token;
       //redirect to Vue app
-     res.redirect(`http://localhost:8081`);
+     res.redirect(`http://js_client.${process.env.DOMAIN_NAME}:8081`);
     })
     .catch((err) => {
       console.error(err);

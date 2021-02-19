@@ -29,7 +29,7 @@ export default {
     };
   },
   mounted() {
-    fetch(`http://localhost:9000/user`, {
+    fetch(`http://js_server.localdev.vcap.me:9000/user`, {
       credentials: "include", // fetch won't send cookies unless you set credentials
     })
       .then((response) => response.json())

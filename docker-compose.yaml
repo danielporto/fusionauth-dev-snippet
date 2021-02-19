@@ -50,7 +50,8 @@ services:
       traefik.enable: true
       traefik.docker.network: net_backend  # required when container connects to more than one network
       traefik.http.routers.traefik.rule: Host(`traefik.$DOMAIN_NAME`)
-      traefik.http.routers.traefik.entrypoints: web
+      traefik.http.routers.traefik.tls: true
+      traefik.http.routers.traefik.entrypoints: websecure
       traefik.http.services.traefik.loadbalancer.server.port: 8080
     healthcheck:
       test: 
@@ -104,8 +105,10 @@ services:
       DATABASE_USERNAME: ${DATABASE_USERNAME}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       FUSIONAUTH_APP_MEMORY: ${FUSIONAUTH_APP_MEMORY}
+      FUSIONAUTH_APP_HTTP_PORT: ${FUSIONAUTH_APP_HTTP_PORT}
+      FUSIONAUTH_APP_HTTPS_PORT: ${FUSIONAUTH_APP_HTTPS_PORT}
       FUSIONAUTH_APP_RUNTIME_MODE: development
-      FUSIONAUTH_APP_URL: http://fusionauth.${DOMAIN_NAME}:9011
+      FUSIONAUTH_APP_URL: http://fusionauth.${DOMAIN_NAME}:${FUSIONAUTH_APP_HTTP_PORT}
       FUSIONAUTH_APP_KICKSTART_FILE: /usr/local/fusionauth/kickstart/${FUSIONAUTH_APP_KICKSTART_FILE}
       SEARCH_TYPE: database
     labels:
@@ -115,11 +118,11 @@ services:
       traefik.http.routers.fusionauth.entrypoints: websecure
       traefik.http.routers.fusionauth.tls: true
       traefik.http.routers.fusionauth.service: fusionauth
-      traefik.http.services.fusionauth.loadbalancer.server.port: 9011
+      traefik.http.services.fusionauth.loadbalancer.server.port: ${FUSIONAUTH_APP_HTTP_PORT}
       traefik.web.backend.healthcheck.path: /
       traefik.web.backend.healthcheck.interval: 10s
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:9011/api/status || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:${FUSIONAUTH_APP_HTTP_PORT}/api/status || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -129,8 +132,8 @@ services:
       aliases:
         - fusionauth.${DOMAIN_NAME}
     restart: unless-stopped
-    ports:
-      - 9011:9011
+    # ports:
+    #   - 9011:9011
     volumes:
       - vol_auth_config:/usr/local/fusionauth/config
       - ./fusionauth/kickstart:/usr/local/fusionauth/kickstart
@@ -213,3 +216,66 @@ services:
   #   depends_on:
   #     traefik:
   #       condition: service_healthy
+
+  js_server:
+    image: js_server
+    build: 
+      context: ./js/vue/server
+      dockerfile: Dockerfile
+    networks:
+      net_backend:
+        aliases:
+          - "js_server.${DOMAIN_NAME}"
+    volumes:
+      - ./js/vue/server:/usr/src/app  
+      # - ./js/vue/node_modules:/usr/src/node_modules
+    environment:
+      # - "NODE_MODULES_DIR=/usr/src/node_modules"
+      - "SERVER_PORT=${SERVER_PORT}"
+      - "FUSIONAUTH_PORT=${FUSIONAUTH_PORT}"
+      - "CLIENT_ID=${CLIENT_ID}"
+      - "CLIENT_SECRET=${CLIENT_SECRET}"
+      - "REDIRECT_URI=${REDIRECT_URI}"
+      - "APLICATION_ID=${APLICATION_ID}"
+      - "API_KEY=${API_KEY}"
+      - "DOMAIN_NAME=${DOMAIN_NAME}"
+    command: bash -c "npm install --quiet && npm run dev"
+    labels:
+      traefik.enable: true
+      traefik.http.routers.js_server.rule: Host(`js_server.${DOMAIN_NAME}`) 
+      traefik.http.routers.js_server.entrypoints: websecure
+      traefik.http.routers.js_server.tls: true
+      traefik.http.services.js_server.loadbalancer.server.port: ${SERVER_PORT}
+  
+  js_client:
+    image: js_client
+    build: 
+      context: ./js/vue/client
+      dockerfile: Dockerfile
+    networks:
+      net_backend:
+        aliases:
+          - "js_client.${DOMAIN_NAME}"
+    volumes:
+      - ./js/vue/client:/usr/src/app  
+      # - ./js/vue/node_modules:/usr/src/node_modules
+    command: bash -c "npm install --quiet && npm run serve"
+    environment:
+      - "DOMAIN_NAME=${DOMAIN_NAME}"
+    #   - "NODE_MODULES_DIR=/usr/src/node_modules"
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.js_client.rule: Host(`js_client.${DOMAIN_NAME}`) 
+      traefik.http.routers.js_client.entrypoints: websecure
+      traefik.http.routers.js_client.tls: true
+      traefik.http.services.js_client.loadbalancer.server.port: 8081
+      traefik.http.middlewares.js_client.redirectregex.regex: '^http://js_client.${DOMAIN_NAME}/login\?(.*)userState=AuthenticatedNotRegistered(.*)'
+      traefik.http.middlewares.js_client.redirectregex.replacement: "http://js_client.${DOMAIN_NAME}"
+      traefik.http.routers.js_client.middlewares: js_client@docker
+
+    depends_on:
+      - js_server
+
+  
+      
