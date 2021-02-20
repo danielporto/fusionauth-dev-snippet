@@ -6,7 +6,7 @@ router.get('/', (req, res) => {
   req.session.destroy();
 
   // end FusionAuth session
-  res.redirect(`http://localhost:${process.env.FUSIONAUTH_PORT}/oauth2/logout?client_id=${process.env.CLIENT_ID}`);
+  res.redirect(`${process.env.AUTH_SERVICE_URI}/oauth2/logout?client_id=${process.env.CLIENT_ID}`);
 });
 
 module.exports = router;

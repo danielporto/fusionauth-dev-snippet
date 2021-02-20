@@ -45,7 +45,7 @@ app.use('/set-user-data', require('./routes/set-user-data'));
 
 
 // Provide a defualt port 
-const port =  process.env.SERVER_PORT || 3000;
+const port =  process.env.BACKEND_SERVICE_PORT || 3000;
 
 // Listen to server  
 app.listen(port, () => {
