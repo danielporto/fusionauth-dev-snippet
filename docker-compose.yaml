@@ -25,42 +25,42 @@ services:
 #----------------------------------------------------------------------------------
 # traefik local deployment configuration
 #----------------------------------------------------------------------------------
-  traefik:
-    image: traefik:v${TRAEFIK_VERSION}
-    restart: unless-stopped
-    networks:
-      net_frontend:
-        aliases:
-          - traefik.${DOMAIN_NAME}
-      net_backend:
-        aliases:
-          - traefik.${DOMAIN_NAME}
-    ports:
-      - 80:80
-      - 443:443
-      - 8080:8080
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml
-      - ./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml
-      - ./certs/${DOMAIN_NAME}.crt:/certs/cert.crt
-      - ./certs/${DOMAIN_NAME}.key:/certs/priv.key      
-    labels:
-      traefik.enable: true
-      traefik.docker.network: net_backend  # required when container connects to more than one network
-      traefik.http.routers.traefik.rule: Host(`traefik.$DOMAIN_NAME`)
-      traefik.http.routers.traefik.tls: true
-      traefik.http.routers.traefik.entrypoints: websecure
-      traefik.http.services.traefik.loadbalancer.server.port: 8080
-    healthcheck:
-      test: 
-        - CMD
-        - traefik
-        - healthcheck
-      interval: 10s
-      timeout: 5s
-      retries: 3
+  # traefik:
+  #   image: traefik:v${TRAEFIK_VERSION}
+  #   restart: unless-stopped
+  #   networks:
+  #     net_frontend:
+  #       aliases:
+  #         - traefik.${DOMAIN_NAME}
+  #     net_backend:
+  #       aliases:
+  #         - traefik.${DOMAIN_NAME}
+  #   ports:
+  #     - 80:80
+  #     - 443:443
+  #     - 8080:8080
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml
+  #     - ./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml
+  #     - ./certs/${DOMAIN_NAME}.crt:/certs/cert.crt
+  #     - ./certs/${DOMAIN_NAME}.key:/certs/priv.key      
+  #   labels:
+  #     traefik.enable: true
+  #     traefik.docker.network: net_backend  # required when container connects to more than one network
+  #     traefik.http.routers.traefik.rule: Host(`traefik.$DOMAIN_NAME`)
+  #     traefik.http.routers.traefik.tls: true
+  #     traefik.http.routers.traefik.entrypoints: websecure
+  #     traefik.http.services.traefik.loadbalancer.server.port: 8080
+  #   healthcheck:
+  #     test: 
+  #       - CMD
+  #       - traefik
+  #       - healthcheck
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
 
     
 #==================================================================================
@@ -111,16 +111,16 @@ services:
       FUSIONAUTH_APP_URL: http://fusionauth.${DOMAIN_NAME}:${FUSIONAUTH_APP_HTTP_PORT}
       FUSIONAUTH_APP_KICKSTART_FILE: /usr/local/fusionauth/kickstart/${FUSIONAUTH_APP_KICKSTART_FILE}
       SEARCH_TYPE: database
-    labels:
-      traefik.enable: true
-      traefik.docker.network: net_backend  # required when container connects to more than one network
-      traefik.http.routers.fusionauth.rule: Host(`fusionauth.${DOMAIN_NAME}`)
-      traefik.http.routers.fusionauth.entrypoints: websecure
-      traefik.http.routers.fusionauth.tls: true
-      traefik.http.routers.fusionauth.service: fusionauth
-      traefik.http.services.fusionauth.loadbalancer.server.port: ${FUSIONAUTH_APP_HTTP_PORT}
-      traefik.web.backend.healthcheck.path: /
-      traefik.web.backend.healthcheck.interval: 10s
+    # labels:
+    #   traefik.enable: true
+    #   traefik.docker.network: net_backend  # required when container connects to more than one network
+    #   traefik.http.routers.fusionauth.rule: Host(`fusionauth.${DOMAIN_NAME}`)
+    #   traefik.http.routers.fusionauth.entrypoints: websecure
+    #   traefik.http.routers.fusionauth.tls: true
+    #   traefik.http.routers.fusionauth.service: fusionauth
+    #   traefik.http.services.fusionauth.loadbalancer.server.port: ${FUSIONAUTH_APP_HTTP_PORT}
+    #   traefik.web.backend.healthcheck.path: /
+    #   traefik.web.backend.healthcheck.interval: 10s
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:${FUSIONAUTH_APP_HTTP_PORT}/api/status || exit 1" ]
       interval: 30s
@@ -132,16 +132,16 @@ services:
       aliases:
         - fusionauth.${DOMAIN_NAME}
     restart: unless-stopped
-    # ports:
-    #   - 9011:9011
+    ports:
+      - 9011:9011
     volumes:
       - vol_auth_config:/usr/local/fusionauth/config
       - ./fusionauth/kickstart:/usr/local/fusionauth/kickstart
-    depends_on:
-      traefik:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
+    # depends_on:
+    #   traefik:
+    #     condition: service_healthy
+    #   postgres:
+    #     condition: service_healthy
 
 #==================================================================================
 # Dns for development/testing
@@ -179,27 +179,27 @@ services:
 # Fake email for development
 #==================================================================================
 # https://github.com/mailhog/MailHog
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    networks:
-      net_backend:
-        aliases:
-          - mail.${DOMAIN_NAME}
-    labels:
-      traefik.enable: true
-      traefik.http.routers.mailhog.entrypoints: websecure
-      traefik.http.routers.mailhog.rule: Host(`mailhog.${DOMAIN_NAME}`)
-      traefik.http.routers.mailhog.tls: true
-      traefik.http.routers.mailhog.service: mailhog
-      traefik.http.services.mailhog.loadbalancer.server.port: 8025
+  # mailhog:
+  #   image: mailhog/mailhog:v1.0.1
+  #   networks:
+  #     net_backend:
+  #       aliases:
+  #         - mail.${DOMAIN_NAME}
+  #   labels:
+  #     traefik.enable: true
+  #     traefik.http.routers.mailhog.entrypoints: websecure
+  #     traefik.http.routers.mailhog.rule: Host(`mailhog.${DOMAIN_NAME}`)
+  #     traefik.http.routers.mailhog.tls: true
+  #     traefik.http.routers.mailhog.service: mailhog
+  #     traefik.http.services.mailhog.loadbalancer.server.port: 8025
 
-      traefik.http.routers.smtp.entrypoints: email
-      traefik.http.routers.smtp.rule: Host(`smtp.${DOMAIN_NAME}`)
-      traefik.http.routers.smtp.service: smtp
-      traefik.http.services.smtp.loadbalancer.server.port: 1025
-    depends_on:
-      traefik:
-        condition: service_healthy
+  #     traefik.http.routers.smtp.entrypoints: email
+  #     traefik.http.routers.smtp.rule: Host(`smtp.${DOMAIN_NAME}`)
+  #     traefik.http.routers.smtp.service: smtp
+  #     traefik.http.services.smtp.loadbalancer.server.port: 1025
+  #   depends_on:
+  #     traefik:
+  #       condition: service_healthy
 
   # simple service for testing.
   # nginx:
@@ -217,15 +217,17 @@ services:
   #     traefik:
   #       condition: service_healthy
 
-  js_server:
-    image: js_server
+  jsserver:
+    image: jsserver
     build: 
       context: ./js/vue/server
       dockerfile: Dockerfile
     networks:
       net_backend:
         aliases:
-          - "js_server.${DOMAIN_NAME}"
+          - "jsserver.${DOMAIN_NAME}"
+    ports:
+      - ${SERVER_PORT}:${SERVER_PORT}
     volumes:
       - ./js/vue/server:/usr/src/app  
       # - ./js/vue/node_modules:/usr/src/node_modules
@@ -240,22 +242,24 @@ services:
       - "API_KEY=${API_KEY}"
       - "DOMAIN_NAME=${DOMAIN_NAME}"
     command: bash -c "npm install --quiet && npm run dev"
-    labels:
-      traefik.enable: true
-      traefik.http.routers.js_server.rule: Host(`js_server.${DOMAIN_NAME}`) 
-      traefik.http.routers.js_server.entrypoints: websecure
-      traefik.http.routers.js_server.tls: true
-      traefik.http.services.js_server.loadbalancer.server.port: ${SERVER_PORT}
+    # labels:
+    #   traefik.enable: true
+    #   traefik.http.routers.jsserver.rule: Host(`jsserver.${DOMAIN_NAME}`) 
+    #   traefik.http.routers.jsserver.entrypoints: websecure
+    #   traefik.http.routers.jsserver.tls: true
+    #   traefik.http.services.jsserver.loadbalancer.server.port: ${SERVER_PORT}
   
-  js_client:
-    image: js_client
+  jsclient:
+    image: jsclient
     build: 
       context: ./js/vue/client
       dockerfile: Dockerfile
     networks:
       net_backend:
         aliases:
-          - "js_client.${DOMAIN_NAME}"
+          - "jsclient.${DOMAIN_NAME}"
+    ports:
+      - 8081:8081
     volumes:
       - ./js/vue/client:/usr/src/app  
       # - ./js/vue/node_modules:/usr/src/node_modules
@@ -264,18 +268,18 @@ services:
       - "DOMAIN_NAME=${DOMAIN_NAME}"
     #   - "NODE_MODULES_DIR=/usr/src/node_modules"
 
-    labels:
-      traefik.enable: true
-      traefik.http.routers.js_client.rule: Host(`js_client.${DOMAIN_NAME}`) 
-      traefik.http.routers.js_client.entrypoints: websecure
-      traefik.http.routers.js_client.tls: true
-      traefik.http.services.js_client.loadbalancer.server.port: 8081
-      traefik.http.middlewares.js_client.redirectregex.regex: '^http://js_client.${DOMAIN_NAME}/login\?(.*)userState=AuthenticatedNotRegistered(.*)'
-      traefik.http.middlewares.js_client.redirectregex.replacement: "http://js_client.${DOMAIN_NAME}"
-      traefik.http.routers.js_client.middlewares: js_client@docker
+    # labels:
+    #   traefik.enable: true
+    #   traefik.http.routers.jsclient.rule: Host(`jsclient.${DOMAIN_NAME}`) 
+    #   traefik.http.routers.jsclient.entrypoints: websecure
+    #   traefik.http.routers.jsclient.tls: true
+    #   traefik.http.services.jsclient.loadbalancer.server.port: 8081
+    #   traefik.http.middlewares.jsclient.redirectregex.regex: '^http://jsclient.${DOMAIN_NAME}/login\?(.*)userState=AuthenticatedNotRegistered(.*)'
+    #   traefik.http.middlewares.jsclient.redirectregex.replacement: "http://jsclient.${DOMAIN_NAME}"
+    #   traefik.http.routers.jsclient.middlewares: jsclient@docker
 
     depends_on:
-      - js_server
+      - jsserver
 
   
       
