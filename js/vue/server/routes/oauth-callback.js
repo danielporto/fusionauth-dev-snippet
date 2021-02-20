@@ -37,7 +37,7 @@ router.get("/", (req, res) => {
       // save token to session
       req.session.token = result.data.access_token;
       //redirect to Vue app
-     res.redirect(`http://jsclient.${DOMAIN_NAME}:8081`);
+     res.redirect(`${process.env.JS_FRONTEND_SERVER_URI}`);
     })
     .catch((err) => {
       console.error(err);

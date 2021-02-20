@@ -39,9 +39,9 @@
           "oauthConfiguration": { 
             "clientSecret": "LsCRkjj-WXtVacnPVCWnkt5x_IZyldNrxgYh7sEHlEo",
             "authorizedRedirectURLs": [
-              "http://localhost:9001/oauth-callback"
+              "http://jsserver.localdev.vcap.me:9000/oauth-callback"
             ],
-            "logoutURL": "http://localhost:8081"
+            "logoutURL": "http://jsclient.localdev.vcap.me:8081"
           }
         }
       }

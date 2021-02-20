@@ -26,10 +26,11 @@ export default {
     return {
       email: null,
       body: null,
+      auth_url: "${process.env.JS_BACKEND_SERVER_FQDN}:${process.env.BACKEND_SERVICE_PORT}",
     };
   },
   mounted() {
-    fetch(`http://js_server.localdev.vcap.me:9000/user`, {
+    fetch(`${process.env.JS_BACKEND_SERVER_URI}/user`, {
       credentials: "include", // fetch won't send cookies unless you set credentials
     })
       .then((response) => response.json())
