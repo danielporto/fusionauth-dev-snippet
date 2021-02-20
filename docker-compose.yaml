@@ -144,38 +144,6 @@ services:
     #     condition: service_healthy
 
 #==================================================================================
-# Dns for development/testing
-# WARNING THIS IS TEMPORARILY DISABLED AND REPLACED FOR A localhost public dns 
-# resolver domain (vcap.me)
-#==================================================================================
-# Coredns helps nodes that is out of the docker stack or swarm to access frontend  
-# services it redirects all *.local.dev queries to 127.0.0.1 to be handle by traefik
-# That requires four things:
-# 1 - all frontend services must have a network alias with the FQDN defined and must be 
-#     used instead of the service name (to keep internal configuration consistent) 
-# 2 - all fronted services must have a reverse proxy configuration defined for the FQDN
-# 3 - a domain file that reply to the public ip of the reverse proxy. (Look at Corefile 
-#     and local.dev.domain files)
-# 4 - all nodes that want to access services exposed via domain must configure the 
-#     coredns as nameserver 
-# Note: Coredns is not used  internally by any container to resolve names. That's done
-# internally by docker and network alias. The purpose of this services is to help external 
-# clients to use it as dns to the reverse proxy.
-
-  # coredns:
-  #   image: coredns/coredns:1.8.0
-  #   networks:
-  #     - net_frontend
-  #   ports:
-  #     - 53:53
-  #     - 53:53/udp 
-  #   volumes:
-  #     - ./coredns/dev/Corefile:/etc/coredns/Corefile
-  #     - ./coredns/dev/local.dev.domain:/etc/coredns/local.dev.domain
-  #     - ./coredns/dev/localhost.domain:/etc/coredns/localhost.domain
-  #   command: -conf /etc/coredns/Corefile
-
-#==================================================================================
 # Fake email for development
 #==================================================================================
 # https://github.com/mailhog/MailHog
@@ -201,21 +169,13 @@ services:
   #     traefik:
   #       condition: service_healthy
 
-  # simple service for testing.
-  # nginx:
-  #   image: nginx
-  #   networks:
-  #     net_backend:
-  #       aliases:
-  #         - nginx.${DOMAIN_NAME}
-  #   labels:
-  #     traefik.enable: true
-  #     traefik.http.routers.nginx.rule: Host(`nginx.${DOMAIN_NAME}`)
-  #     traefik.http.routers.nginx.entrypoints: websecure
-  #     traefik.http.routers.nginx.tls: true
-  #   depends_on:
-  #     traefik:
-  #       condition: service_healthy
+      traefik.http.routers.smtp.entrypoints: email
+      traefik.http.routers.smtp.rule: Host(`smtp.${DOMAIN_NAME}`)
+      traefik.http.routers.smtp.service: smtp
+      traefik.http.services.smtp.loadbalancer.server.port: 1025
+    depends_on:
+      traefik:
+        condition: service_healthy
 
   jsserver:
     image: jsserver
