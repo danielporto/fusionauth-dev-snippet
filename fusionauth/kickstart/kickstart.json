@@ -8,6 +8,10 @@
     {
       "key": "bf69486b-4733-4470-a592-f1bfce7af580",
       "description": "Standard development API key"
+    },
+    {
+      "key": "vg0RDbnxTqC2eRnSWLXQ-CT-OP2akDVAc9nqSA5s-ujfn3nX8WwUtZa1",
+      "description": "fusionauth example api key"
     }
   ],
   "supportId": "5acfd1b6-f687-ae13-8ffd-1900200c9a77",
@@ -17,7 +21,7 @@
       "url": "/api/application/85a03867-dccf-4882-adde-1a79aeec50df",
       "body": {
         "application": {
-          "name": "Pied Piper",
+          "name": "Fusionauth example",
           "roles": [
             {
               "name": "dev"
@@ -26,9 +30,19 @@
               "name": "ceo"
             },
             {
-              "name": "intern"
+              "name": "manager"
+            },
+            {
+              "name": "support"
             }
-          ]
+          ],
+          "oauthConfiguration": { 
+            "clientSecret": "LsCRkjj-WXtVacnPVCWnkt5x_IZyldNrxgYh7sEHlEo",
+            "authorizedRedirectURLs": [
+              "http://localhost:9001/oauth-callback"
+            ],
+            "logoutURL": "http://localhost:8081"
+          }
         }
       }
     },
