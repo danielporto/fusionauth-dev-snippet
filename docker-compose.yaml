@@ -132,8 +132,9 @@ services:
       aliases:
         - "${FUSIONAUTH_SERVER_FQDN}"
     restart: unless-stopped
-    ports:
-      - 9011:9011
+    # ports:
+    #   - ${FUSIONAUTH_APP_HTTP_PORT}:${FUSIONAUTH_APP_HTTP_PORT}
+    #   - ${FUSIONAUTH_APP_HTTPS_PORT}:${FUSIONAUTH_APP_HTTPS_PORT}
     volumes:
       - vol_auth_config:/usr/local/fusionauth/config
       - ./fusionauth/kickstart:/usr/local/fusionauth/kickstart
@@ -178,8 +179,8 @@ services:
       net_backend:
         aliases:
           - "${JS_BACKEND_SERVER_FQDN}"
-    ports:
-      - ${BACKEND_SERVICE_PORT}:${BACKEND_SERVICE_PORT}
+    # ports:
+    #   - ${BACKEND_SERVICE_PORT}:${BACKEND_SERVICE_PORT}
     volumes:
       - ./js/vue/server:/usr/src/app  
       # - ./js/vue/node_modules:/usr/src/node_modules
@@ -205,33 +206,35 @@ services:
     image: jsclient
     build: 
       context: ./js/vue/client
+      # https://vuejs.org/v2/cookbook/dockerize-vuejs-app.html
       dockerfile: Dockerfile
     networks:
       net_backend:
         aliases:
           - "${JS_FRONTEND_SERVER_FQDN}"
     ports:
-      - 8081:8081
+      - ${FRONTEND_SERVICE_PORT}:${FRONTEND_SERVICE_PORT}
     volumes:
       - ./js/vue/client:/usr/src/app  
       # - ./js/vue/node_modules:/usr/src/node_modules
     command: bash -c "npm install --quiet && npm run serve"
     environment:
-      - "DOMAIN_NAME=${DOMAIN_NAME}"
-      - "FRONTEND_SERVICE_PORT=${FRONTEND_SERVICE_PORT}"
-      - "BACKEND_SERVICE_PORT=${BACKEND_SERVICE_PORT}"
-      - "JS_BACKEND_SERVER_FQDN=${JS_BACKEND_SERVER_FQDN}"
-      - "JS_BACKEND_SERVER_URI=${JS_BACKEND_SERVER_URI}"
+      # vue app envs MUST be prefixed with VUE_APP_
+      - "VUE_APP_DOMAIN_NAME=${DOMAIN_NAME}"
+      - "VUE_APP_FRONTEND_SERVICE_PORT=${FRONTEND_SERVICE_PORT}"
+      - "VUE_APP_BACKEND_SERVICE_PORT=${BACKEND_SERVICE_PORT}"
+      - "VUE_APP_JS_BACKEND_SERVER_FQDN=${JS_BACKEND_SERVER_FQDN}"
+      - "VUE_APP_JS_BACKEND_SERVER_URI=${JS_BACKEND_SERVER_URI}"
     #   - "NODE_MODULES_DIR=/usr/src/node_modules"
     labels:
       traefik.enable: true
       traefik.http.routers.jsclient.tls: true
       traefik.http.routers.jsclient.entrypoints: websecure
       traefik.http.routers.jsclient.rule: Host(`${JS_FRONTEND_SERVER_FQDN}`) 
-      traefik.http.routers.jsclient.middlewares: jsclient@docker
       traefik.http.services.jsclient.loadbalancer.server.port: ${FRONTEND_SERVICE_PORT}
-      traefik.http.middlewares.jsclient.redirectregex.regex: '^http://${JS_FRONTEND_SERVER_FQDN}/login\?(.*)userState=AuthenticatedNotRegistered(.*)'
-      traefik.http.middlewares.jsclient.redirectregex.replacement: "http://${JS_FRONTEND_SERVER_FQDN}"
+      # traefik.http.routers.jsclient.middlewares: jsclient@docker
+      # traefik.http.middlewares.jsclient.redirectregex.regex: '^http://${JS_FRONTEND_SERVER_FQDN}/login\?(.*)userState=AuthenticatedNotRegistered(.*)'
+      # traefik.http.middlewares.jsclient.redirectregex.replacement: "http://${JS_FRONTEND_SERVER_FQDN}"
     depends_on:
       - jsserver
 
