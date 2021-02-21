@@ -1,3 +1,4 @@
+# https://vuejs.org/v2/cookbook/dockerize-vuejs-app.html
 FROM node:14.15.5-buster-slim 
 
 RUN apt update && apt install -y git python make g++ && apt clean all
