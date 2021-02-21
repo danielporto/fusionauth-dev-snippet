@@ -2,6 +2,7 @@
   <div id="app">
     <header>
       <h1>FusionAuth Example Vue</h1>
+      <div> url: {{ backend_url }} </div>
     </header>
     <div id="container">
       <Greet v-bind:email="email" />
@@ -21,16 +22,16 @@ export default {
   components: {
     Greet,
     Login,
-   Update    
+    Update    
   },data() {
     return {
       email: null,
       body: null,
-      auth_url: "${process.env.JS_BACKEND_SERVER_FQDN}:${process.env.BACKEND_SERVICE_PORT}",
+      backend_url: `${process.env.VUE_APP_JS_BACKEND_SERVER_URI}`
     };
   },
   mounted() {
-    fetch(`${process.env.JS_BACKEND_SERVER_URI}/user`, {
+    fetch(`${process.env.VUE_APP_JS_BACKEND_SERVER_URI}/user`, {
       credentials: "include", // fetch won't send cookies unless you set credentials
     })
       .then((response) => response.json())
