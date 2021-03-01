@@ -18,7 +18,7 @@ export default {
   },
   methods: {
     update: function() {
-      fetch(`http://jsserver.${process.env.DOMAIN_NAME}:9000/set-user-data`, {
+      fetch("http://jsserver.localdev.vcap.me:9000/set-user-data", {
         credentials: "include",
         method: "POST",
         headers: {
