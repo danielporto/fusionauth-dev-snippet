@@ -132,9 +132,9 @@ services:
       aliases:
         - "${FUSIONAUTH_SERVER_FQDN}"
     restart: unless-stopped
-    # ports:
-    #   - ${FUSIONAUTH_APP_HTTP_PORT}:${FUSIONAUTH_APP_HTTP_PORT}
-    #   - ${FUSIONAUTH_APP_HTTPS_PORT}:${FUSIONAUTH_APP_HTTPS_PORT}
+    ports:
+      - ${FUSIONAUTH_APP_HTTP_PORT}:${FUSIONAUTH_APP_HTTP_PORT}
+      - ${FUSIONAUTH_APP_HTTPS_PORT}:${FUSIONAUTH_APP_HTTPS_PORT}
     volumes:
       - vol_auth_config:/usr/local/fusionauth/config
       - ./fusionauth/kickstart:/usr/local/fusionauth/kickstart
@@ -156,9 +156,9 @@ services:
           - ${MAIL_SERVER_FQDN}
     labels:
       traefik.enable: true
+      traefik.http.routers.mailhog.tls: true
       traefik.http.routers.mailhog.entrypoints: websecure
       traefik.http.routers.mailhog.rule: Host(`${MAIL_SERVER_FQDN}`)
-      traefik.http.routers.mailhog.tls: true
       traefik.http.routers.mailhog.service: mailhog
       traefik.http.services.mailhog.loadbalancer.server.port: 8025
 
@@ -179,8 +179,8 @@ services:
       net_backend:
         aliases:
           - "${JS_BACKEND_SERVER_FQDN}"
-    # ports:
-    #   - ${BACKEND_SERVICE_PORT}:${BACKEND_SERVICE_PORT}
+    ports:
+      - ${BACKEND_SERVICE_PORT}:${BACKEND_SERVICE_PORT}
     volumes:
       - ./js/vue/server:/usr/src/app  
       # - ./js/vue/node_modules:/usr/src/node_modules
@@ -197,9 +197,9 @@ services:
     command: bash -c "npm install --quiet && npm run dev"
     labels:
       traefik.enable: true
-      traefik.http.routers.jsserver.rule: Host(`${JS_BACKEND_SERVER_FQDN}`) 
-      traefik.http.routers.jsserver.entrypoints: websecure
       traefik.http.routers.jsserver.tls: true
+      traefik.http.routers.jsserver.entrypoints: websecure
+      traefik.http.routers.jsserver.rule: Host(`${JS_BACKEND_SERVER_FQDN}`) 
       traefik.http.services.jsserver.loadbalancer.server.port: ${BACKEND_SERVICE_PORT}
   
   jsclient:
@@ -238,5 +238,24 @@ services:
     depends_on:
       - jsserver
 
-  
-      
+  #https://fusionauth.io/blog/2020/06/03/user-registration-and-sign-in-with-laravel/
+  phpserver:
+    image: phpserver
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    volumes:
+      - ./php:/var/www
+    labels:
+      traefik.enable: true
+      traefik.http.routers.php.tls: true
+      traefik.http.routers.php.entrypoints: websecure
+      traefik.http.routers.php.rule: Host(`${PHP_BACKEND_SERVER_FQDN}`)
+      traefik.http.services.php.loadbalancer.server.port: 4040
+    command: bash -c "composer install; php artisan serve --host=0.0.0.0 --port=4040"
+    depends_on:
+      - postgres
+    networks:
+      net_backend:
+        aliases:
+          - ${PHP_BACKEND_SERVER_FQDN}
